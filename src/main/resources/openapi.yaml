@@ -1,0 +1,744 @@
+openapi: 3.0.4
+info:
+  title: Beveage Service
+  version: '1.0'
+  description: >
+    Summer is coming and we are all looking forward to having a barbecue with
+    friends.
+
+    For a nice barbecue, we also need some refreshing drinks. 
+
+    Therefore, we want to start a new business where we sell beverages and
+    deliver them to people. 
+
+    The easiest way is to implement a REST API where users can access the
+    beverages via a well defined interface.
+servers:
+  - url: 'http://localhost:9999/v1'
+    description: Development Server
+components:
+  schemas:
+
+    #BeverageDTo
+    beverageDTO:
+        type: object
+        required:
+          - search
+          - mode
+        properties:
+          search:
+            type: string
+          bottle:
+            type: array
+            items:
+              $ref: '#/components/schemas/bottleDTO'
+          crate:
+            type: array
+            items:
+              $ref: '#/components/schemas/crateDTO'
+          mode:
+              $ref: '#/components/schemas/searchMode'
+
+
+    # BOTTLES
+    bottleDTO:
+      type: object
+      required:
+        - id
+        - name
+        - volume
+        - isAlcoholic
+        - volumePercent
+        - price
+        - inStock
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        volume:
+          type: number
+        isAlcoholic:
+          type: boolean
+        volumePercent:
+          type: number
+        price:
+          type: number
+        supplier:
+          type: string
+        inStock:
+          type: number
+    bottlePostDTO:
+      type: object
+      required:
+        - name
+        - volume
+        - isAlcoholic
+        - volumePercent
+        - price
+        - inStock
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        volume:
+          type: number
+        isAlcoholic:
+          type: boolean
+        volumePercent:
+          type: number
+        price:
+          type: number
+        supplier:
+          type: string
+        inStock:
+          type: number
+
+    # CRATES
+    crateDTO:
+      type: object
+      required:
+        - id
+        - bottle
+        - noOfBottles
+        - price
+        - inStock
+      properties:
+        id:
+          type: number
+        bottle:
+          $ref: '#/components/schemas/bottleDTO'
+        noOfBottles:
+          type: number
+        price:
+          type: number
+        inStock:
+          type: number
+    cratePostDTO:
+      type: object
+      required:
+        - bottle
+        - noOfBottles
+        - price
+        - inStock
+      properties:
+        id:
+          type: number
+        bottle:
+          $ref: '#/components/schemas/bottleDTO'
+        noOfBottles:
+          type: number
+        price:
+          type: number
+        inStock:
+          type: number
+
+    #ORDERS
+    orderDTO:
+      type: object
+      required:
+        - orderId
+        - positions
+        - price
+        - status
+      properties:
+        orderId:
+          type: number
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/orderItemDTO'
+        price:
+          type: number
+        status:
+          $ref: '#/components/schemas/orderStatus'
+
+    orderPostDTO:
+      type: object
+      required:
+        - positions
+        - price
+        - status
+      properties:
+        orderId:
+          type: number
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/orderItemDTO'
+        price:
+          type: number
+        status:
+          $ref: '#/components/schemas/orderStatus'
+
+    #ORDERITEM
+    orderItemDTO:
+      type: object
+      required:
+        - number
+        - bottle
+        - crate
+        - quantity
+      properties:
+        number:
+          type: number
+        bottle:
+          $ref: '#/components/schemas/bottleDTO'
+        crate:
+          $ref: '#/components/schemas/crateDTO'
+        quantity:
+          type: number
+
+
+    # ORDERSTATUS
+    orderStatus:
+      type: string
+      enum: [SUBMITTED, PROCESSED]
+
+    #SEARCHMODE
+    searchMode:
+       type: string
+       enum: [NAME, INSTOCK, SUPPLIER]
+
+
+
+    #ERRORMESSAGES
+    errorMessage:
+      type: object
+      required:
+        - errorType
+      properties:
+        errorType:
+          description: 'error category, should be extended'
+          enum:
+            - INVALID_PARAMETER
+            - FORBIDDEN
+        message:
+          type: string
+          description: A detailed error description
+
+    #PAGINATION
+    pagination:
+      type: object
+      properties:
+        page:
+          type: number
+        noOfPages:
+          type: number
+        first:
+          type: string
+        previous:
+          type: string
+        next:
+          type: string
+        last:
+          type: string
+
+    paginatedBottles:
+      type: object
+      properties:
+        pagination:
+          $ref: '#/components/schemas/pagination'
+        bottles:
+          type: array
+          items:
+            $ref: '#/components/schemas/bottleDTO'
+        href:
+          type: string
+
+    paginatedCrates:
+      type: object
+      properties:
+        pagination:
+          $ref: '#/components/schemas/pagination'
+        bottles:
+          type: array
+          items:
+            $ref: '#/components/schemas/crateDTO'
+        href:
+          type: string
+
+    paginatedOrders:
+      type: object
+      properties:
+        pagination:
+          $ref: '#/components/schemas/pagination'
+        bottles:
+          type: array
+          items:
+            $ref: '#/components/schemas/orderDTO'
+        href:
+          type: string
+
+
+paths:
+  "/employees/orders":
+    description: A catalog of all orders
+    get:
+      summary: Gets orders on a specific page
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: pageLimit
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        200:
+          description: Orders on the page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/paginatedOrders"
+        400:
+          description: A bad request initiated by the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+
+  "/employees/order/{orderId}":
+    parameters:
+      - name: orderId
+        required: true
+        in: path
+        schema:
+          type: number
+    get:
+      summary: Getting an specific order
+      responses:
+        200:
+          description: Getting an specific order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/orderDTO"
+        404:
+          description: Not found
+
+    put:
+      summary: Update an specific order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderPostDTO'
+      responses:
+        200:
+          description: Update an specific order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/orderDTO"
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        404:
+          description: Not found
+
+  "/employees/bottles":
+    get:
+      summary: Getting all bottles
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: pageLimit
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        200:
+          description: Bottles on page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paginatedBottles'
+        400:
+          description: A bad request initiated by the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+  "/employees/bottle":
+    post:
+      summary: Creates a bottle
+      description: Creates a bottle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bottlePostDTO'
+      responses:
+        201:
+          description: Created your bottle successfully
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+  "/employees/bottle/{bottleId}":
+    parameters:
+      - name: bottleId
+        required: true
+        in: path
+        schema:
+          type: number
+
+    get:
+      summary: Getting an specific bottle
+      responses:
+        200:
+          description: Getting an specific bottle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/bottleDTO"
+        404:
+          description: Not found
+
+    put:
+      summary: Update an specific bottle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bottlePostDTO'
+      responses:
+        200:
+          description: Update an specific bottle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/bottleDTO"
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        404:
+          description: Not found
+
+    delete:
+      summary: Delete bottle
+      responses:
+        200:
+          description: Bottle deleted
+        404:
+          description: Bottle not found
+
+  "/employees/crates":
+    get:
+      summary: Getting all crates
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: pageLimit
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        200:
+          description: Getting all crates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paginatedOrders'
+        400:
+          description: A bad request initiated by the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+  "/employees/crate":
+    post:
+      summary: Creates a crate
+      description: Creates a crate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cratePostDTO'
+      responses:
+        201:
+          description: Created your crate successfully
+        400:
+          description: Message body was empty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+
+  "/employees/crate/{crateId}":
+    parameters:
+      - name: crateId
+        required: true
+        in: path
+        schema:
+          type: number
+
+    get:
+      summary: Getting an specific crate
+      responses:
+        200:
+          description: Getting an specific crate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/crateDTO"
+        404:
+          description: Not found
+
+    put:
+      summary: Update an specific crate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/cratePostDTO'
+      responses:
+        200:
+          description: Update an specific crate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/crateDTO"
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        404:
+          description: Not found
+    delete:
+      summary: Delete crate
+      responses:
+        200:
+          description: crate deleted
+        404:
+          description: crate not found
+
+  "/user/order":
+    post:
+      summary: Creates a order
+      description: Creates a order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderPostDTO'
+      responses:
+        201:
+          description: Created your order successfully
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+  "/user/order/{orderId}":
+    parameters:
+      - name: orderId
+        required: true
+        in: path
+        schema:
+          type: number
+
+    get:
+      summary: Getting an specific order
+      responses:
+        200:
+          description: Getting an specific order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/orderDTO"
+        404:
+          description: Not found
+
+    put:
+      summary: Update an specific order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderPostDTO'
+      responses:
+        200:
+          description: Update an specific order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/orderDTO"
+        400:
+          description: Message body was empty
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        403:
+          description: Order already processed
+          content:
+            application/*:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        404:
+          description: Not found
+
+    delete:
+      summary: Delete order
+      responses:
+        200:
+          description: order deleted
+        403:
+          description: Order already processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+        404:
+          description: order not found
+
+  "/user/bottles":
+    get:
+      summary: Getting all bottles
+      parameters:
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            default: -1
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            default: -1
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: asc
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: pageLimit
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        200:
+          description: Getting all bottles filtered for max/min price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paginatedBottles'
+        400:
+          description: A bad request initiated by the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+  "/user/crates":
+    get:
+      summary: Getting all crates
+      parameters:
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            default: -1
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            default: -1
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: asc
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: pageLimit
+          in: query
+          schema:
+            type: number
+            default: 10
+      responses:
+        200:
+          description: Getting all crates filtered for max/min price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paginatedCrates'
+        400:
+          description: A bad request initiated by the user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+  "/user/search":
+    description: Get all matching beverage
+    get:
+      summary: Get all matching beverage
+      parameters:
+        - name: searchMode
+          in: query
+          schema:
+            type: string
+        - name: mode
+          in: query
+          schema:
+            $ref: '#/components/schemas/searchMode'
+
+      responses:
+        200:
+          description: Beverage with searched name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/beverageDTO'
+
+        404:
+          description: If searchmode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/errorMessage"
+
+
+
+
